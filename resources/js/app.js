@@ -2,15 +2,15 @@ import './bootstrap';
 import Swal from 'sweetalert2';
 import './avatar-preview';
 import './biblioteca';
-import './cronometro';
+import { initSalaInteractiva } from './sala-interactiva';
 
-// Hace que 'Swal' sea accesible globalmente para usarlo en cualquier parte
+// Herramientas globales
 window.Swal = Swal;
 
-// --- ALERTAS DE VALIDACIÓN (SweetAlert) ---
 document.addEventListener('DOMContentLoaded', () => {
-    const alertData = document.getElementById('validation-alert');
 
+    // 1. ALERTAS DE VALIDACIÓN
+    const alertData = document.getElementById('validation-alert');
     if (alertData) {
         const message = alertData.getAttribute('data-message');
         Swal.fire({
@@ -21,32 +21,36 @@ document.addEventListener('DOMContentLoaded', () => {
             confirmButtonText: 'Entendido'
         });
     }
+
+    // 2. AUTO-DETECCIÓN DE SALA (El "Motor" principal)
+    const salaRoot = document.getElementById('sala-interactiva-root');
+    if (salaRoot) {
+        // En app.js, dentro del if(salaRoot)
+        const tipo = salaRoot.getAttribute('data-tipo'); // Esto debería ser solo 'despacho-rosa'
+        const user = salaRoot.getAttribute('data-user');
+
+        // Redimensionador de mapas (Librería externa)
+        if (typeof imageMapResize === 'function') {
+            imageMapResize();
+        }
+
+        // Arrancamos TODO (Timer, Botes, Chat y PULSO)
+        // Como ya incluimos el pulso dentro de esta función, no hace falta llamarlo aparte
+        initSalaInteractiva(tipo, user);
+
+        console.log("🚀 Sistema de sala iniciado para:", tipo);
+    }
 });
 
-// --- FUNCIONALIDADES GLOBALES (Accesibles desde el HTML) ---
-
-// 1. Mostrar/Ocultar formulario de cambio de nombre
-// resources/js/app.js
-
-// ... (tus imports de SweetAlert, cronometro, etc.)
-
 // --- FUNCIONALIDADES GLOBALES ---
+
 window.toggleFormNombre = function () {
     const container = document.getElementById('form-nombre-container');
     if (!container) return;
-
-    if (container.style.display === 'none' || container.style.display === '') {
-        container.style.display = 'block';
-        const input = container.querySelector('input');
-        if (input) input.focus(); // Mejora: pone el cursor en el input al abrir
-    } else {
-        container.style.display = 'none';
-    }
+    container.style.display = (container.style.display === 'none' || container.style.display === '') ? 'block' : 'none';
+    if (container.style.display === 'block') container.querySelector('input')?.focus();
 };
 
-// ... resto de funciones
-
-// 2. Alerta para usuarios no registrados
 window.alertaInvitado = function () {
     Swal.fire({
         title: '¡Hola, patata! 🥔',

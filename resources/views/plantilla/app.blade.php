@@ -39,10 +39,6 @@
         @yield('content')
     </main>
 
-    {{-- Script del Cronómetro solo para usuarios logueados --}}
-    @auth
-        @vite(['resources/js/cronometro.js'])
-    @endauth
-
+   
 </body>
 </html>

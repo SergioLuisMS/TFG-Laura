@@ -174,28 +174,102 @@
 /* ================================
    🧪 CRONÓMETRO EN EL CALDERO
    ================================ */
+/* 🕒 Cronómetro en el caldero (Botica) */
 .cronometro-caldero {
     position: absolute;
-    /* Antes: top 61.2% | left 48.1% */
-    /* Ahora: Más abajo (64%) y más a la izquierda (45%) */
     top: 74%;
+    /* Posición ajustada al caldero */
     left: 43%;
-
     transform: translate(-50%, -50%);
-    z-index: 5;
-    text-align: center;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 10px 20px;
+    border-radius: 50px;
+    border: 2px solid #b89356;
+    z-index: 10;
     pointer-events: none;
 }
 
 .cronometro-caldero .tiempo-display {
-    font-size: 2.3rem;
     color: #a7f3d0;
+    /* Verde neón para el caldero */
     font-family: 'Courier New', monospace;
+    font-size: 1.8rem;
     font-weight: bold;
-    /* Resplandor del caldero */
-    text-shadow: 0 0 10px rgba(52, 211, 153, 0.8),
-        0 0 20px rgba(52, 211, 153, 0.4),
-        2px 2px 4px rgba(0, 0, 0, 0.7);
+    text-shadow: 0 0 10px rgba(52, 211, 153, 0.8), 2px 2px 4px rgba(0, 0, 0, 0.7);
+}
+
+/* 💬 Ventana de Chat (Patata-Log) */
+.ventana-comentarios {
+    position: absolute;
+    bottom: 25px;
+    left: 25px;
+    width: 280px;
+    height: 220px;
+    background: rgba(30, 20, 15, 0.95);
+    border: 2px solid #b89356;
+    border-radius: 12px;
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
+    transition: opacity 0.3s ease;
+}
+
+.chat-header {
+    background: #b89356;
+    color: #fff;
+    padding: 6px 12px;
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    display: flex;
+    justify-content: space-between;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+    color: #e0d0b0;
+    font-size: 0.85rem;
+}
+
+.mensaje {
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(184, 147, 86, 0.2);
+    padding-bottom: 2px;
+}
+
+.mensaje b {
+    color: #ffca28;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+}
+
+.chat-input-area {
+    display: flex;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    gap: 5px;
+}
+
+.chat-input-area input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid #b89356;
+    border-radius: 5px;
+    color: white;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+}
+
+.chat-input-area button {
+    background: #b89356;
+    border: none;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 5px;
+    cursor: pointer;
 }
 
 

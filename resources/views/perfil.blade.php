@@ -1,11 +1,15 @@
 @extends('plantilla.app')
 
+{{-- En perfil.blade.php --}}
+@section('meta')
+@vite(['resources/css/componentes/perfil.css'])
+@endsection
+
 @section('content')
-{{-- Cargamos los estilos específicos de perfil --}}
-@vite(['resources/css/perfil.css'])
+{{-- Ya no hace falta el @vite aquí dentro --}}
 
 <div class="contenedor-perfil-layout">
-
+    
     {{-- COLUMNA IZQUIERDA (1/3): NAVEGACIÓN --}}
     <div class="columna-perfil-izq">
         <div class="tarjeta-decorativa shadow-sm">
@@ -96,25 +100,40 @@
                     @endif
                 </p>
 
-                <p>
+                <div class="seccion-tiempo">
                     <strong>⏱️ Tiempo de enfoque:</strong>
                     @if(isset($tiemposPorSala) && $tiemposPorSala->count() > 0)
-                <ul style="list-style: none; padding-left: 10px; margin-top: 5px;">
-                    @foreach($tiemposPorSala as $sesion)
-                    <li style="font-size: 0.9rem;">
-                        📍 {{ ucwords(str_replace('-', ' ', $sesion->sala)) }}:
-                        <strong>{{ floor($sesion->total_segundos / 60) }}m {{ $sesion->total_segundos % 60 }}s</strong>
-                    </li>
-                    @endforeach
-                </ul>
-                <div style="margin-top: 5px; border-top: 1px dashed #fdba74; padding-top: 5px;">
-                    <strong>Total:</strong> {{ $minutosTotales }} minutos
+                    <ul style="list-style: none; padding-left: 10px; margin-top: 5px;">
+                        @foreach($tiemposPorSala as $sesion)
+                        @php
+                        // 1. Limpiamos cualquier texto sobrante (clases del body o prefijos)
+                        $salaLimpia = str_replace(['esta-logueado', 'sala-', 'sala', '-'], [' ', '', '', ' '], $sesion->sala);
+                        // 2. Lo ponemos bonito (Primera letra mayúscula)
+                        $nombreFinal = ucwords(trim($salaLimpia));
+                        @endphp
+                        <li style="font-size: 0.9rem;">
+                            📍 {{ $nombreFinal }}:
+                            <strong>{{ floor($sesion->total_segundos / 60) }}m {{ $sesion->total_segundos % 60 }}s</strong>
+                        </li>
+                        @endforeach
+                    </ul>
+
+                    {{-- 🥔 Cálculo del TOTAL real --}}
+                    <div style="margin-top: 8px; border-top: 1px dashed #fdba74; padding-top: 5px; font-size: 1rem;">
+                        @php
+                        $segundosTotalesGlobal = $tiemposPorSala->sum('total_segundos');
+                        $horas = floor($segundosTotalesGlobal / 3600);
+                        $minutos = floor(($segundosTotalesGlobal % 3600) / 60);
+                        @endphp
+                        <strong>Total acumulado:</strong>
+                        @if($horas > 0) {{ $horas }}h @endif {{ $minutos }} minutos
+                    </div>
+                    @else
+                    <p style="color: #94a3b8; font-style: italic; margin-top: 5px;">¡Todavía no has entrado en ninguna sala!</p>
+                    @endif
                 </div>
-                @else
-                <span style="color: #94a3b8; font-style: italic;">¡Todavía no has entrado en ninguna sala!</span>
-                @endif
-                </p>
-                <p><strong>ADN Patata:</strong> {{ Auth::user()->avatar_base }}, {{ Auth::user()->avatar_ojos }}</p>
+
+                <p style="margin-top: 15px;"><strong>ADN Patata:</strong> {{ Auth::user()->avatar_base }}, {{ Auth::user()->avatar_ojos }}</p>
             </div>
         </details>
 
