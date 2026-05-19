@@ -1,18 +1,9 @@
 # 1. Usar la imagen oficial de PHP con Apache
 FROM php:8.2-apache
 
-# 2. Instalar extensiones del sistema y PHP necesarias para Laravel y PostgreSQL
-# 2. Instalar extensiones del sistema y PHP necesarias para Laravel y PostgreSQL
-RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    zip \
-    unzip \
-    libpq-dev \
-    && docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd
+# 2. Instalar extensiones del sistema y PHP para Laravel y PostgreSQL
+RUN apt-get update && apt-get install -y git curl libpng-dev libonig-dev libxml2-dev zip unzip libpq-dev && docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd
+
 # 3. Habilitar el módulo rewrite de Apache (crucial para las rutas de Laravel)
 RUN a2enmod rewrite
 
@@ -20,8 +11,7 @@ RUN a2enmod rewrite
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # 5. Instalar Node.js y NPM (necesarios para compilar Vite)
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
-    && apt-get install -y nodejs
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && apt-get install -y nodejs
 
 # 6. Establecer el directorio de trabajo en el servidor
 WORKDIR /var/www/html
