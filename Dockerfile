@@ -2,7 +2,8 @@
 FROM php:8.2-apache
 
 # 2. Instalar extensiones del sistema y PHP necesarias para Laravel y PostgreSQL
-# RUN apt-get update && apt-get install -y \
+# 2. Instalar extensiones del sistema y PHP necesarias para Laravel y PostgreSQL
+RUN apt-get update && apt-get install -y \
     git \
     curl \
     libpng-dev \
@@ -12,7 +13,6 @@ FROM php:8.2-apache
     unzip \
     libpq-dev \
     && docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd
-
 # 3. Habilitar el módulo rewrite de Apache (crucial para las rutas de Laravel)
 RUN a2enmod rewrite
 
