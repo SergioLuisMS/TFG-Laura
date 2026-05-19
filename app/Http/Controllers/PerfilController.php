@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Libro;
+use App\Models\SesionEstudio;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -14,8 +16,10 @@ class PerfilController extends Controller
         $usuario = auth()->user();
 
         // 1. CÁLCULO DEL GÉNERO MÁS VALORADO
-        $estadisticasGeneros = $usuario->libros()
+        $estadisticasGeneros = Libro::query() // En lugar de Book::query()
+            ->join('book_user', 'books.id', '=', 'book_user.book_id')
             ->select('books.genre', \Illuminate\Support\Facades\DB::raw('AVG(book_user.puntuacion) as media_puntuacion'))
+            ->where('book_user.user_id', $usuario->id) // Filtramos explícitamente por el usuario
             ->whereNotNull('book_user.puntuacion')
             ->where('book_user.puntuacion', '>', 0)
             ->groupBy('books.genre')
@@ -49,45 +53,83 @@ class PerfilController extends Controller
 
     public function actualizarAvatar(Request $request)
     {
-        $user = Auth::user();
+        // Define aquí exactamente los nombres de tus archivos (sin la ruta, solo el nombre)
+        $basesPermitidas = ['base1.png', 'base2.png', 'base3.png'];
+        $bocasPermitidas = ['boca1.png', 'boca2.png'];
+        $ojosPermitidos  = ['ojos1.png', 'ojos2.png'];
+        $compsPermitidos = ['comp1.png', 'comp2.png', 'ninguno.png'];
 
         $request->validate([
-            'avatar_base' => 'required',
-            'avatar_boca' => 'required',
-            'avatar_ojos' => 'required',
-            'avatar_complemento' => 'required',
+            'avatar_base' => ['required', 'in:' . implode(',', $basesPermitidas)],
+            'avatar_boca' => ['required', 'in:' . implode(',', $bocasPermitidas)],
+            'avatar_ojos' => ['required', 'in:' . implode(',', $ojosPermitidos)],
+            'avatar_complemento' => ['required', 'in:' . implode(',', $compsPermitidos)],
         ]);
 
-        $user->update([
-            'avatar_base' => $request->avatar_base,
-            'avatar_boca' => $request->avatar_boca,
-            'avatar_ojos' => $request->avatar_ojos,
-            'avatar_complemento' => $request->avatar_complemento,
-        ]);
+        $user = Auth::user();
+        $user->update($request->only([
+            'avatar_base',
+            'avatar_boca',
+            'avatar_ojos',
+            'avatar_complemento'
+        ]));
 
         return redirect()->route('perfil')->with('success', '¡Avatar actualizado! 🥔✨');
     }
 
     public function actualizarNombre(Request $request)
     {
+        // 1. Validación estricta
         $request->validate([
-            'name' => 'required|string|max:255|min:1',
+            'name' => [
+                'required',
+                'string',
+                'max:50', // Límite razonable para un nombre
+                'min:1',
+                // unique:users,name -> asegura que no haya dos personas con el mismo nombre
+                // . auth()->id() -> ¡IMPORTANTE! Esto permite que el usuario mantenga su nombre actual
+                'unique:users,name,' . auth()->id(),
+            ],
         ]);
 
+        // 2. Obtener el usuario y actualizar
         $user = User::find(auth()->id());
-        $user->name = $request->input('name');
-        $user->save();
 
+        // Al usar ->validated() solo tomamos lo que pasó el filtro
+        $user->update([
+            'name' => $request->input('name')
+        ]);
+
+        // 3. Refrescar la sesión por seguridad
         auth()->setUser($user);
 
-        return back()->with('success', '¡Nombre actualizado! 🥔✨');
+        return back()->with('success', '¡Nombre actualizado correctamente! 🥔✨');
     }
 
     public function visitarPerfil($id)
     {
+        $usuarioActual = Auth::id();
+
+        // 1. Si intenta visitar su propio perfil, lo dejamos pasar
+        if ($id == $usuarioActual) {
+            return redirect()->route('perfil');
+        }
+
+        // 2. Buscamos el usuario visitado
         $amigo = User::findOrFail($id);
 
-        // 🎯 Aquí ya lo tenías bien como "libros"
+        // 3. Comprobamos si son amigos (estado 'aceptada')
+        $esAmigo = \App\Models\Amigo::where(function ($q) use ($usuarioActual, $id) {
+            $q->where('usuario_id', $usuarioActual)->where('amigo_id', $id);
+        })->orWhere(function ($q) use ($usuarioActual, $id) {
+            $q->where('usuario_id', $id)->where('amigo_id', $usuarioActual);
+        })->where('estado', 'aceptada')->exists();
+
+        // 4. Si NO son amigos, bloqueamos el acceso
+        if (!$esAmigo) {
+            abort(403, 'No tienes permiso para ver esta estantería. ¡Añádele como amigo primero! 🥔');
+        }
+
         $books = $amigo->libros;
 
         return view('amigos.perfil-amigo', compact('amigo', 'books'));

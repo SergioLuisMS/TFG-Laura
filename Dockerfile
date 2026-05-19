@@ -1,5 +1,5 @@
 # 1. Usar la imagen oficial de PHP con Apache
-FROM php:8.2-apache
+FROM php:8.3-apache
 
 # 2. Instalar extensiones del sistema y PHP para Laravel y PostgreSQL
 RUN apt-get update && apt-get install -y git curl libpng-dev libonig-dev libxml2-dev zip unzip libpq-dev && docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd

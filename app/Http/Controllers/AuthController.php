@@ -17,12 +17,15 @@ class AuthController extends Controller
         $credenciales = $request->only('email', 'password');
 
         if (Auth::attempt($credenciales)) {
+            // Regeneramos la sesión para mayor seguridad
+            $request->session()->regenerate();
+
             return redirect()->intended('/');
         }
 
         return back()->withErrors([
             'email' => 'Las credenciales no coinciden con nuestros registros.',
-        ]);
+        ])->onlyInput('email'); // Esto mantiene el email que el usuario escribió para que no tenga que volver a teclearlo
     }
 
     /**
