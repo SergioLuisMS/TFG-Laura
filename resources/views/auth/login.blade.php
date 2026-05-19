@@ -1,8 +1,5 @@
 @extends('plantilla.app')
-<<<<<<< HEAD
 
-=======
->>>>>>> 79a0306e16c36ede2b96ea06b39031d822084548
 @section('content')
 
 @if ($errors->any())
