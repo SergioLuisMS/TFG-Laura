@@ -1,9 +1,11 @@
 document.addEventListener('DOMContentLoaded', function () {
     const display = document.getElementById('timer');
-    const salaActual = document.body.dataset.sala;
+    
+    // Buscamos el div principal que contiene la información de la sala
+    const rootElement = document.getElementById('sala-interactiva-root');
+    const salaActual = rootElement ? rootElement.getAttribute('data-tipo') : null;
 
     // --- 1. LÓGICA VISUAL (Reloj en pantalla) ---
-    // Se ejecuta si existe el elemento con ID 'timer'
     if (display) {
         let segundosTotales = 0;
         console.log("⏳ Cronómetro visual iniciado...");
@@ -20,14 +22,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- 2. LÓGICA DE BASE DE DATOS (Sincronización con Laravel) ---
-    // Se ejecuta si estamos dentro de una sala válida
-    if (salaActual && salaActual !== 'otra') {
+    if (salaActual) {
         console.log("⏱️ Envío de pulsos activado para la sala: " + salaActual);
 
         setInterval(() => {
             const token = document.querySelector('meta[name="csrf-token"]')?.content;
 
-            // Usamos la URL que definimos en tus rutas de Laravel
             fetch("/salas/registrar-pulso", { 
                 method: 'POST',
                 headers: {

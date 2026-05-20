@@ -78,14 +78,28 @@ class SalaController extends Controller
             'sala'     => 'required|string'
         ]);
 
-        SesionEstudio::create([
-            'user_id'      => Auth::id(),
-            'sala'         => $request->sala,
-            'segundos'     => $request->segundos,
-            'fecha_inicio' => now(),
-        ]);
+        $salaLimpia = strtolower(trim($request->sala));
+        $userId = Auth::id();
+        $hoy = now()->toDateString();
 
-        return redirect()->route('salas.index')->with('success', '¡Sesión guardada! Tiempo registrado.');
+        // Buscamos si ya empezó una sesión hoy en esta sala
+        $registro = SesionEstudio::where('user_id', $userId)
+            ->where('sala', $salaLimpia)
+            ->whereDate('fecha_inicio', $hoy)
+            ->first();
+
+        if ($registro) {
+            $registro->increment('segundos', $request->segundos);
+        } else {
+            SesionEstudio::create([
+                'user_id'      => $userId,
+                'sala'         => $salaLimpia,
+                'fecha_inicio' => now(),
+                'segundos'     => $request->segundos,
+            ]);
+        }
+
+        return redirect()->route('salas.index')->with('success', '¡Sesión guardada y tiempo acumulado!');
     }
 
     // Registrar pulso (Cada 30 segundos vía AJAX)

@@ -17,8 +17,6 @@ Route::get('/', function () {
     return view('menu');
 })->name('home');
 
-
-/*
 /*
 |--------------------------------------------------------------------------
 | 2. RUTAS DE ACCESO (Login y Registro)
@@ -29,7 +27,7 @@ Route::get('/login', [AuthController::class, 'mostrarLogin'])->name('login');
 // APLICAMOS EL RATE LIMITER AQUÍ:
 // Permite máximo 5 intentos por minuto por cada dirección IP
 Route::post('/login', [AuthController::class, 'login'])
-    ->middleware('throttle:5,1'); 
+    ->middleware('throttle:5,1');
 
 Route::get('/registro', [AuthController::class, 'mostrarRegistro'])->name('registro');
 Route::post('/registro', [AuthController::class, 'registrar']);
