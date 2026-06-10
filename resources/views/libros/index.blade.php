@@ -27,26 +27,18 @@
         @if(isset($libros) && count($libros) > 0)
         <div class="lista-resultados">
             @foreach($libros as $libro)
-            @php
-            $info = $libro['volumeInfo'] ?? null;
-            $portada = $info['imageLinks']['thumbnail'] ?? asset('img/no-portada.png');
-            $portada = str_replace('http://', 'https://', $portada);
-            $titulo = $info['title'] ?? 'Sin título';
-            $autor = isset($info['authors']) ? implode(', ', $info['authors']) : 'Autor desconocido';
-            $genero = $info['categories'][0] ?? 'Ficción';
-            @endphp
-
             <div class="tarjeta-libro-lista">
                 {{-- Portada --}}
                 <div style="flex-shrink: 0; margin-right: 25px;">
-                    <img src="{{ $portada }}" class="portada-libro-resultado" style="width: 100px; height: 140px;">
+                    <img src="{{ $libro['portada'] }}" class="portada-libro-resultado" style="width: 100px; height: 140px;"
+                        onerror="this.onerror=null;this.src='{{ asset('img/no-portada.svg') }}'">
                 </div>
 
                 {{-- Info --}}
                 <div style="flex-grow: 1;">
-                    <h3 class="auth-titulo" style="text-align: left; font-size: 1.3rem;">{{ Str::limit($titulo, 70) }}</h3>
-                    <p class="auth-subtitulo" style="text-align: left;">{{ $autor }}</p>
-                    <span class="etiqueta-genero">{{ $genero }}</span>
+                    <h3 class="auth-titulo" style="text-align: left; font-size: 1.3rem;">{{ Str::limit($libro['titulo'], 70) }}</h3>
+                    <p class="auth-subtitulo" style="text-align: left;">{{ $libro['autor'] }}</p>
+                    <span class="etiqueta-genero">{{ $libro['genero'] }}</span>
                 </div>
 
                 {{-- Acción (AJAX) --}}
@@ -55,10 +47,10 @@
                     <button type="button"
                         class="btn-compacto-add"
                         onclick="añadirLibroSinRecargar(this)"
-                        data-title="{{ $titulo }}"
-                        data-author="{{ $autor }}"
-                        data-genre="{{ $genero }}"
-                        data-cover="{{ $portada }}">
+                        data-title="{{ $libro['titulo'] }}"
+                        data-author="{{ $libro['autor'] }}"
+                        data-genre="{{ $libro['genero'] }}"
+                        data-cover="{{ $libro['portada'] }}">
                         + Añadir
                     </button>
                     @else

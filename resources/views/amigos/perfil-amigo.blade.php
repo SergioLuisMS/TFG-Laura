@@ -1,8 +1,6 @@
 @extends('plantilla.app')
 
 @section('content')
-{{-- CARGA ÚNICA: Ruta corregida para evitar el error 404 --}}
-@vite(['resources/css/componentes/perfil-amigo.css'])
 
 <div class="contenedor-perfil-layout">
 
@@ -44,7 +42,7 @@
                     ℹ️ Información
                 </button>
 
-                <a href="{{ url('/buscar-amigos?tab=mis-amigos') }}" class="btn-perfil-navegacion">
+                <a href="{{ route('amigos.index', ['tab' => 'mis-amigos']) }}" class="btn-perfil-navegacion">
                     ⬅ Volver
                 </a>
             </div>
@@ -109,9 +107,6 @@
                     </div>
 
                     <div class="info-amigo-container">
-                        <div class="info-item">
-                            <p><strong>📧 Email:</strong> {{ $amigo->email }}</p>
-                        </div>
                         <div class="info-item">
                             <p><strong>📅 Miembro desde:</strong> {{ $amigo->created_at->format('d/m/Y') }}</p>
                         </div>

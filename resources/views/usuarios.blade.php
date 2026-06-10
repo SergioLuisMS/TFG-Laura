@@ -1,7 +1,6 @@
 @extends('plantilla.app')
 
 @section('content')
-@vite(['resources/css/componentes/lista-usuarios.css'])
 
 {{-- 1. Alertas más integradas --}}
 @if(session('success'))
@@ -85,10 +84,21 @@
         @else
             <h3 class="titulo-seccion">Descubrir nuevas patatas</h3>
             <div class="grid-usuarios-container">
-                @foreach($usuarios as $user)
+                @forelse($usuarios as $user)
                     @include('amigos.tarjeta_usuario', ['user' => $user, 'tipo' => 'buscar'])
-                @endforeach
+                @empty
+                    <div class="estado-vacio">
+                        <p>No hay mas patatas por descubrir.</p>
+                    </div>
+                @endforelse
             </div>
+
+            {{-- Paginacion de la lista de usuarios por descubrir --}}
+            @if($usuarios->hasPages())
+                <div class="mt-6 flex justify-center">
+                    {{ $usuarios->links() }}
+                </div>
+            @endif
         @endif
 
     </div>

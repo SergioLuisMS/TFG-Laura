@@ -11,6 +11,7 @@
             'jardin' => 'fondo-jardin.png',
             'dormitorio' => 'fondo-dormitorio.png',
             'biblioteca' => 'fondo-biblioteca.png',
+            'despacho-neutro' => 'fondo-despacho-neutro.png',
         ];
         $fondoActual = $fondos[$tipo] ?? 'fondo-botica.png';
     @endphp
@@ -31,7 +32,7 @@
                         style="display:none;">
                     <img src="{{ asset('img/items/botica/caldero/caldero3.png') }}" id="reaccion-bote3" class="reaccion-caldero"
                         style="display:none;">
-                    <img src="{{ asset('img/items/botica/caldero/caldero4.png') }}" id="reaccion-bote8" class="reaccion-caldero"
+                    <img src="{{ asset('img/items/botica/caldero/caldero4.png') }}" id="reaccion-bote4" class="reaccion-caldero"
                         style="display:none;">
                 </div>
 
@@ -39,7 +40,7 @@
                     style="top: 44%; left: 74%;">
                 <img src="{{ asset('img/items/botica/bote/bote2.png') }}" class="bote-interactivo" id="bote2"
                     style="top: 40%; left: 70%;">
-                <img src="{{ asset('img/items/botica/bote/bote8.png') }}" class="bote-interactivo" id="bote8"
+                <img src="{{ asset('img/items/botica/bote/bote8.png') }}" class="bote-interactivo" id="bote4"
                     style="top: 55%; left: 69%;">
                 <img src="{{ asset('img/items/botica/bote/bote3.png') }}" class="bote-interactivo" id="bote3"
                     style="top: 61%; left: 71%;">
@@ -68,8 +69,25 @@
             </div>
 
             {{-- CRONÓMETRO GLOBAL (FUERA DE CONDICIONALES) --}}
-            <div class="cronometro-circular" style="border-color: {{ $sala['color_borde'] ?? '#ccc' }}">
-                <span class="tiempo-display" id="timer">00:00:00</span>
+            <div class="widget-concentracion">
+
+                <div class="cronometro-circular" style="border-color: {{ $sala['color_borde'] ?? '#ccc' }}">
+
+                    <div class="reloj-brillo"></div>
+
+                    <span class="tiempo-display" id="timer">
+                        00:00:00
+                    </span>
+                </div>
+
+                <div class="focus-container">
+                    <div id="focus-bar"></div>
+                </div>
+
+                <div class="focus-texto">
+                    Concentración
+                </div>
+
             </div>
 
             <div class="botones-inferiores">

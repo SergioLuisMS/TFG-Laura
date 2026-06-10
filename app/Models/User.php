@@ -3,12 +3,21 @@
 namespace App\Models;
 
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany; // <-- CAMBIO: Usamos BelongsToMany para estanterías
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-class User extends Authenticatable
+/**
+ * Implemento MustVerifyEmail para que Laravel gestione el flujo de verificacion
+ * de correo automaticamente (Seguridad #27).
+ *
+ * Para que la verificacion funcione hay que configurar MAIL_MAILER en el .env.
+ * En desarrollo se puede usar MAIL_MAILER=log y el enlace aparecera en storage/logs/laravel.log.
+ * Para activar la barrera de acceso, anade ->middleware('verified') al grupo de rutas protegidas.
+ */
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasFactory, Notifiable;
 
@@ -19,7 +28,7 @@ class User extends Authenticatable
         'avatar_base',
         'avatar_boca',
         'avatar_ojos',
-        'avatar_complemento'
+        'avatar_complemento',
     ];
 
     protected $hidden = [
@@ -31,12 +40,13 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'password'          => 'hashed',
         ];
     }
 
     /**
-     * Relación con los libros (La Estantería)
+     * Relacion con los libros del usuario (su estanteria personal).
+     * Incluye los campos del pivote: estado y puntuacion.
      */
     public function libros(): BelongsToMany
     {
@@ -45,12 +55,10 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
-
-
     /**
-     * Amigos que YO he agregado (Yo soy el remitente)
+     * Solicitudes de amistad que yo he enviado (yo soy usuario_id).
      */
-    public function amigosEnviados()
+    public function amigosEnviados(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'amigos', 'usuario_id', 'amigo_id')
             ->withPivot('estado')
@@ -58,9 +66,9 @@ class User extends Authenticatable
     }
 
     /**
-     * Amigos que ME han agregado (Yo soy el destinatario)
+     * Solicitudes de amistad que he recibido (yo soy amigo_id).
      */
-    public function amigosRecibidos()
+    public function amigosRecibidos(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'amigos', 'amigo_id', 'usuario_id')
             ->withPivot('estado')
@@ -68,25 +76,23 @@ class User extends Authenticatable
     }
 
     /**
-     * Función mágica para obtener TODOS los amigos aceptados
+     * Devuelvo todos mis amigos con amistad aceptada, sin importar quien envio la solicitud.
      */
     public function misAmigos()
     {
-        // Esto busca en ambas listas solo los que tienen estado 'aceptado'
-        $enviados = $this->amigosEnviados()->wherePivot('estado', 'aceptado')->get();
-        $recibidos = $this->amigosRecibidos()->wherePivot('estado', 'aceptado')->get();
+        $enviados  = $this->amigosEnviados()->wherePivot('estado', 'aceptada')->get();
+        $recibidos = $this->amigosRecibidos()->wherePivot('estado', 'aceptada')->get();
 
         return $enviados->merge($recibidos);
     }
+
     /**
-     * Relación de amigos: Usuarios que han aceptado la solicitud
+     * Solo las amistades que yo inicie y que ya fueron aceptadas (un subconjunto de misAmigos).
      */
-    public function amigos()
+    public function amigos(): BelongsToMany
     {
-        // Esta relación conecta User con User a través de la tabla 'amigos'
-        // 'usuario_id' es el que envía, 'amigo_id' es el que recibe
         return $this->belongsToMany(User::class, 'amigos', 'usuario_id', 'amigo_id')
-            ->wherePivot('estado', 'aceptada') // Solo los confirmados
+            ->wherePivot('estado', 'aceptada')
             ->withPivot('estado');
     }
 }

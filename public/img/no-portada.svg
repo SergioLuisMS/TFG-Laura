@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="180" viewBox="0 0 120 180" role="img" aria-label="Sin portada">
+  <rect width="120" height="180" rx="10" fill="#fdfaf0" stroke="#eaddca" stroke-width="2"/>
+  <rect x="10" y="10" width="100" height="160" rx="6" fill="none" stroke="#d7ccc8" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="60" y="86" font-size="40" text-anchor="middle" dominant-baseline="central">🥔</text>
+  <text x="60" y="128" font-family="Georgia, serif" font-size="13" fill="#8b5e3c" text-anchor="middle">Sin portada</text>
+</svg>

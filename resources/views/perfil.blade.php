@@ -1,10 +1,5 @@
 @extends('plantilla.app')
 
-{{-- En perfil.blade.php --}}
-@section('meta')
-@vite(['resources/css/componentes/perfil.css'])
-@endsection
-
 @section('content')
 {{-- Ya no hace falta el @vite aquí dentro --}}
 

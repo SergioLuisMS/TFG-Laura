@@ -1,0 +1,32 @@
+# Mantengo el contexto de build ligero y evito meter en la imagen cosas locales.
+# Las dependencias se reinstalan dentro del Dockerfile, asi que NO las copio.
+.git
+.gitignore
+node_modules
+vendor
+
+# Secretos y entornos locales: en Railway la config va por variables de entorno.
+.env
+.env.*
+!.env.railway.example
+
+# Assets/artefactos que se regeneran en el build.
+public/build
+public/hot
+public/storage
+
+# Logs y cache locales.
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/*.key
+
+# Entorno local de Docker/Sail y editores.
+docker-compose.override.yml
+.idea
+.vscode
+.fleet
+.phpunit.result.cache
+.phpunit.cache
+Dockerfile.render.old

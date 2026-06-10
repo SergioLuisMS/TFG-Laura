@@ -9,7 +9,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="route-guardar-libro" content="{{ route('libros.guardar') }}">
 
-    <title>Patata Social Network</title>
+    <title>Libros y patatas</title>
     <link rel="icon" type="image/png" href="{{ asset('img/logo/logo_patata.png') }}">
 
     {{-- Llamamos solo a app.css y app.js porque app.css ya importa todos los componentes --}}

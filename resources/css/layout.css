@@ -11,22 +11,27 @@
     --sombra-suave: 0 10px 30px rgba(0, 0, 0, 0.05);
 }
 
-/* --- NUEVO: Gestión de Fondos (Antes en el HTML) --- */
+html {
+    font-size: 85%;
+}
+
 body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
     background-size: cover !important;
     background-attachment: fixed !important;
     background-repeat: no-repeat !important;
     background-position: center top !important;
     background-color: #f5f1e6 !important;
-    margin: 0;
 }
 
 body.es-invitado {
-    background-image: url('/public/img/fondo/fondo1.png') !important;
+    background-image: url('/img/fondo/fondo1.png') !important;
 }
 
 body.esta-logueado {
-    background-image: url('/public/img/fondo/fondo2.png') !important;
+    background-image: url('/img/fondo/fondo2.png') !important;
 }
 
 /* --- NUEVO: Alertas AJAX (Antes en el HTML) --- */
@@ -54,13 +59,14 @@ body.esta-logueado {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 50px;
+    padding: 0 42px;
     background: rgba(250, 244, 234, 0.749);
     backdrop-filter: blur(12px);
     width: 100%;
-    height: 90px;
-    position: sticky;
+    height: 68px;
+    position: fixed;
     top: 0;
+    left: 0;
     z-index: 1000;
     box-sizing: border-box;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
@@ -105,15 +111,23 @@ body.esta-logueado {
     box-shadow: var(--sombra-suave);
 }
 
+/* main wrapper — compensa el nav fixed de 68px */
+.diseño-contenido-principal {
+    padding-top: 68px;
+    min-height: 100vh;
+    background: transparent !important;
+}
+
 /* =============================================================
    4. AUTENTICACIÓN (LOGIN / REGISTRO)
    ============================================================= */
 .seccion-auth {
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
     min-height: 80vh;
-    padding: 20px;
+    padding: 42px 20px 35px;
+    box-sizing: border-box;
 }
 
 .contenedor-auth-card {
@@ -250,7 +264,7 @@ body.esta-logueado {
 .contenedor-menu-principal {
     max-width: 900px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 40px 20px 50px;
 }
 
 .caja-bienvenida {

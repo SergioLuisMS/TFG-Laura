@@ -16,5 +16,5 @@
         </form>
     </div>
 </div>
-@vite(['resources/js/avatar-preview.js'])
+{{-- El preview del avatar ya se carga desde app.js (importa avatar-preview.js globalmente) --}}
 @endsection

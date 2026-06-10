@@ -30,6 +30,11 @@
                 <input type="password" name="password" placeholder="Crea una contraseña" required>
             </div>
 
+            <div class="input-group">
+                <label>Repite la contraseña</label>
+                <input type="password" name="password_confirmation" placeholder="Repite tu contraseña" required>
+            </div>
+
             {{-- Selector de avatar --}}
             <div class="separador-avatar">
                 @include('componentes.form-avatar')
@@ -49,6 +54,6 @@
     </div>
 </div>
 
-@vite(['resources/js/avatar-preview.js'])
+{{-- El preview del avatar ya se carga desde app.js (importa avatar-preview.js globalmente) --}}
 
 @endsection

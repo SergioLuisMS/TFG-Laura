@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+
 abstract class Controller
 {
-    // Este es el controlador base del que heredan todos los demás
+    // Añado AuthorizesRequests para poder usar $this->authorize() en todos los controladores
+    use AuthorizesRequests;
 }

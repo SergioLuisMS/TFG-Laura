@@ -22,14 +22,22 @@ class UserFactory extends Factory
      *
      * @return array<string, mixed>
      */
+    /**
+     * Incluyo valores por defecto para los campos de avatar porque son obligatorios en el registro.
+     * Uso los valores reales del sistema para que los tests no fallen por restricciones de la BD.
+     */
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
-            'remember_token' => Str::random(10),
+            'name'               => fake()->name(),
+            'email'              => fake()->unique()->safeEmail(),
+            'email_verified_at'  => now(),
+            'password'           => static::$password ??= Hash::make('password'),
+            'remember_token'     => Str::random(10),
+            'avatar_base'        => 'base/azulRelleno.png',
+            'avatar_boca'        => 'boca/boca1.png',
+            'avatar_ojos'        => 'ojos/ojos1.png',
+            'avatar_complemento' => 'complemento/complemento1.png',
         ];
     }
 

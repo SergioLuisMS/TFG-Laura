@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function () {
+/*document.addEventListener('DOMContentLoaded', function () {
     const display = document.getElementById('timer');
     
     // Buscamos el div principal que contiene la información de la sala
@@ -45,4 +45,4 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }, 30000); // Se sincroniza cada 30 segundos
     }
-});
+});*/

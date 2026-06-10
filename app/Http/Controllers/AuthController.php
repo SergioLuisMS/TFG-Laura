@@ -2,88 +2,85 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\RegistroRequest;
 use App\Models\User;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
     /**
-     * Maneja el inicio de sesión de usuarios existentes.
+     * Proceso el inicio de sesion con las credenciales del formulario.
+     * Si el email o la contrasena son incorrectos, devuelvo un error generico
+     * para no revelar si el email existe o no en la base de datos.
      */
     public function login(Request $request)
     {
         $credenciales = $request->only('email', 'password');
 
         if (Auth::attempt($credenciales)) {
-            // Regeneramos la sesión para mayor seguridad
+            // Regenero la sesion para prevenir ataques de fijacion de sesion
             $request->session()->regenerate();
-
             return redirect()->intended('/');
         }
 
         return back()->withErrors([
             'email' => 'Las credenciales no coinciden con nuestros registros.',
-        ])->onlyInput('email'); // Esto mantiene el email que el usuario escribió para que no tenga que volver a teclearlo
+        ])->onlyInput('email');
     }
 
     /**
-     * Registra una nueva patata (usuario) en la base de datos.
+     * Registro una nueva patata (usuario) en la base de datos.
+     *
+     * Uso RegistroRequest para validar tanto los campos basicos como la whitelist
+     * de partes del avatar. Antes esta validacion estaba inline en el controlador.
      */
-    public function registrar(Request $request)
+    public function registrar(RegistroRequest $request)
     {
-        // 1. Validación de los datos recibidos
-        $request->validate([
-            'name'               => 'required|string|max:255',
-            'email'              => 'required|email|unique:users,email',
-            'password'           => 'required|min:6',
-            'avatar_base'        => 'required',
-            'avatar_boca'        => 'required',
-            'avatar_ojos'        => 'required',
-            'avatar_complemento' => 'required',
-        ], [
-            'email.unique' => '¡Esta patata ya tiene dueño! El correo ya está registrado.',
-            'required'     => '¡Tu patata no puede nacer incompleta! Elige todas las opciones.'
-        ]);
-
-        // 2. Creación del usuario
-        // NOTA: No concatenamos '.png' ni 'Relleno.png' porque el formulario ya envía el nombre completo.
         $usuario = User::create([
-            'name'               => $request->name,
-            'email'              => $request->email,
-            'password'           => Hash::make($request->password),
-            'avatar_base'        => $request->avatar_base,
-            'avatar_boca'        => $request->avatar_boca,
-            'avatar_ojos'        => $request->avatar_ojos,
-            'avatar_complemento' => $request->avatar_complemento,
+            'name'               => $request->validated('name'),
+            'email'              => $request->validated('email'),
+            'password'           => Hash::make($request->validated('password')),
+            'avatar_base'        => $request->validated('avatar_base'),
+            'avatar_boca'        => $request->validated('avatar_boca'),
+            'avatar_ojos'        => $request->validated('avatar_ojos'),
+            'avatar_complemento' => $request->validated('avatar_complemento'),
         ]);
 
-        // 3. Logueamos automáticamente al usuario recién creado
+        // Hago login automatico para que no tenga que iniciar sesion manualmente
         Auth::login($usuario);
 
-        return redirect()->to('/')->with('success', '¡Bienvenida al club de las patatas lectoras!');
+        // Si tengo verificacion de email activa, envio el correo de verificacion
+        if ($usuario instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && !$usuario->hasVerifiedEmail()) {
+            $usuario->sendEmailVerificationNotification();
+        }
+
+        return redirect()->to('/')->with('success', 'Bienvenida al club de las patatas lectoras.');
     }
 
+    /**
+     * Muestro el formulario de inicio de sesion.
+     */
     public function mostrarLogin()
     {
-        // Cambiamos 'login' por 'auth.login'
         return view('auth.login');
     }
 
+    /**
+     * Muestro el formulario de registro.
+     */
     public function mostrarRegistro()
     {
-        // Cambiamos 'registro' por 'auth.registro'
         return view('auth.registro');
     }
 
     /**
-     * Cierra la sesión y limpia la información del navegador.
+     * Cierro la sesion del usuario y limpio el token CSRF.
      */
     public function logout(Request $request)
     {
         Auth::logout();
-
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

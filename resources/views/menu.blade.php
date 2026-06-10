@@ -34,7 +34,7 @@
         <div class="tarjeta-menu">
             <div class="icono-tarjeta">🏠</div>
             <h3>Concentración</h3>
-            <p>Registra tu tiempo de estudio.</p>
+            <p>Registra tu tiempo de lectura.</p>
             <a href="{{ route('salas.index') }}" class="btn-menu">Ir a una sala</a>
         </div>
 

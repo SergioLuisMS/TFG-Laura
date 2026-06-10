@@ -1,39 +1,80 @@
-# 1. Usar la imagen oficial de PHP con Apache
-FROM php:8.3-apache
+# syntax=docker/dockerfile:1
+# ============================================================================
+# Dockerfile para desplegar en Railway con MySQL.
+# (NO afecta al `docker compose up -d` local, que construye su propia imagen
+#  desde vendor/laravel/sail y NO usa este archivo.)
+#
+# El Dockerfile anterior (Render + PostgreSQL) quedo guardado como
+# Dockerfile.render.old por si algun dia lo necesitas.
+# ============================================================================
 
-# 2. Instalar extensiones del sistema y PHP para Laravel y PostgreSQL
-RUN apt-get update && apt-get install -y git curl libpng-dev libonig-dev libxml2-dev zip unzip libpq-dev && docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd
+# ----------------------------------------------------------------------------
+# Etapa 1: compilo los assets de frontend (CSS/JS) con Vite.
+# ----------------------------------------------------------------------------
+FROM node:20-bookworm-slim AS assets
+WORKDIR /app
 
-# 3. Habilitar el módulo rewrite de Apache (crucial para las rutas de Laravel)
-RUN a2enmod rewrite
+# Copio solo el manifiesto de npm primero para cachear la instalacion de dependencias.
+# (No hay package-lock.json en el proyecto, por eso uso npm install y no npm ci.)
+COPY package.json ./
+RUN npm install
 
-# 4. Instalar Composer (el gestor de paquetes de PHP)
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# Copio el resto del proyecto y compilo los assets a /app/public/build.
+COPY . .
+# Llamo a vite con node directamente para no depender del shim node_modules/.bin/vite.
+RUN node node_modules/vite/bin/vite.js build
 
-# 5. Instalar Node.js y NPM (necesarios para compilar Vite)
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && apt-get install -y nodejs
+# ----------------------------------------------------------------------------
+# Etapa 2: imagen final con PHP + Apache que sirve Laravel.
+# ----------------------------------------------------------------------------
+FROM php:8.3-apache AS app
 
-# 6. Establecer el directorio de trabajo en el servidor
+# Extensiones de PHP necesarias para Laravel + MySQL.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libonig-dev \
+        libzip-dev \
+        unzip \
+        git \
+        curl \
+    && docker-php-ext-install pdo_mysql mbstring bcmath zip \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Composer (lo copio de su imagen oficial).
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Apache: habilito rewrite/headers y apunto el DocumentRoot a public/.
+RUN a2enmod rewrite headers
+COPY docker/railway/000-default.conf /etc/apache2/sites-available/000-default.conf
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
+
 WORKDIR /var/www/html
 
-# 7. Copiar todos los archivos del proyecto al contenedor
+# Instalo las dependencias PHP (sin las de desarrollo) en su propia capa para cachearlas.
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction
+
+# Copio el codigo y los assets ya compilados de la etapa 1.
 COPY . .
+COPY --from=assets /app/public/build ./public/build
 
-# 8. Modificar la configuración de Apache para que apunte a la carpeta /public de Laravel
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+# Genero el autoloader optimizado y descubro los paquetes de Laravel.
+RUN composer dump-autoload --optimize --no-dev \
+    && php artisan package:discover --ansi || true
 
-# 9. Instalar las dependencias de PHP y compilar el frontend con Vite
-RUN composer install --no-dev --optimize-autoloader
-RUN npm install
-RUN npm run build
+# Me aseguro de que exista el esqueleto de storage (por si el .dockerignore dejo fuera
+# alguna subcarpeta) y doy permisos: Apache corre como www-data y necesita escribir aqui.
+RUN mkdir -p \
+        storage/framework/views \
+        storage/framework/cache \
+        storage/framework/sessions \
+        storage/logs \
+        bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
-# 10. Dar los permisos correctos a las carpetas de Laravel
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# Copio el entrypoint, le quito posibles saltos de linea de Windows (CRLF) y lo hago ejecutable.
+COPY docker/railway/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh /etc/apache2/sites-available/000-default.conf \
+    && chmod +x /usr/local/bin/entrypoint.sh
 
-# 11. Exponer el puerto por defecto de Render
-EXPOSE 80
-
-# 12. Comando para arrancar Apache en primer plano
-CMD ["apache2-foreground"]
+ENTRYPOINT ["entrypoint.sh"]

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\EstadoAmistad;
 use App\Models\Amigo;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -9,129 +10,154 @@ use Illuminate\Support\Facades\Auth;
 
 class AmigoController extends Controller
 {
+    /**
+     * Muestro las tres pestanas de amistades: descubrir, mis amigos y solicitudes recibidas.
+     *
+     * Uso paginacion en la lista de "nuevas patatas" para no cargar todos los usuarios
+     * de golpe cuando la base de datos crezca (Mejora #22).
+     */
     public function index(Request $request)
     {
         $userId = auth()->id();
 
-        // 1. Obtener todas las relaciones donde participas (Aceptadas o Pendientes)
-        $todasMisRelaciones = \App\Models\Amigo::where('usuario_id', $userId)
+        // Obtengo todas las relaciones donde participo (aceptadas o pendientes)
+        $todasMisRelaciones = Amigo::where('usuario_id', $userId)
             ->orWhere('amigo_id', $userId)
             ->get();
 
-        // 2. IDs para "Más patatas": Gente que NO eres tú y con la que NO tienes NADA
+        // IDs de todos los usuarios con los que ya tengo alguna relacion
         $relacionesIds = $todasMisRelaciones->flatMap(function ($rel) {
             return [$rel->usuario_id, $rel->amigo_id];
         })->unique()->toArray();
 
-        // Añadimos distinct() por seguridad
-        $usuarios = \App\Models\User::where('id', '!=', $userId)
+        // Usuarios sin ninguna relacion conmigo (pestaña "Descubrir")
+        $usuarios = User::where('id', '!=', $userId)
             ->whereNotIn('id', $relacionesIds)
             ->withCount('libros')
-            ->distinct()
-            ->get();
+            ->paginate(12);
 
-        // 3. IDs para "Mis amigos": Solo relaciones ACEPTADAS o Pendientes que TÚ enviaste
-        $misRelacionesIds = $todasMisRelaciones->filter(function ($rel) use ($userId) {
-            return $rel->estado === 'aceptada' || ($rel->estado === 'pendiente' && $rel->usuario_id == $userId);
+        // IDs de mis amigos aceptados en cualquier direccion
+        $misRelacionesIds = $todasMisRelaciones->filter(function ($rel) {
+            return $rel->estado === EstadoAmistad::Aceptada->value;
         })->map(function ($rel) use ($userId) {
             return $rel->usuario_id == $userId ? $rel->amigo_id : $rel->usuario_id;
         })->unique();
 
-        $misAmigos = \App\Models\User::whereIn('id', $misRelacionesIds)
+        $misAmigos = User::whereIn('id', $misRelacionesIds)
             ->withCount('libros')
-            ->distinct()
             ->get();
 
-        // 4. Solicitudes Recibidas (Paula envía a Laura)
-        $solicitudesRecibidas = \App\Models\Amigo::where('amigo_id', $userId)
-            ->where('estado', 'pendiente')
+        // Solicitudes que he recibido y aun no he respondido
+        $solicitudesRecibidas = Amigo::where('amigo_id', $userId)
+            ->where('estado', EstadoAmistad::Pendiente->value)
             ->with('sender')
             ->get();
 
         $solicitudesPendientes = $solicitudesRecibidas->count();
 
-        return view('usuarios', compact('usuarios', 'misAmigos', 'solicitudesPendientes', 'solicitudesRecibidas'));
+        return view('usuarios', compact(
+            'usuarios',
+            'misAmigos',
+            'solicitudesPendientes',
+            'solicitudesRecibidas'
+        ));
     }
 
-    // 1. ENVIAR SOLICITUD (Corregido el nombre de la columna)
+    /**
+     * Envio una solicitud de amistad al usuario con el id indicado.
+     *
+     * Compruebo las dos direcciones de la tabla para evitar duplicados
+     * tanto si yo ya envie una solicitud antes como si el otro me la envio a mi (Bug #4).
+     */
     public function enviarSolicitud($id)
     {
-        $userId = auth()->id();
-        $amigoId = $id;
+        $userId  = auth()->id();
+        $amigoId = (int) $id;
 
-        if ($userId == $amigoId) {
-            return back()->with('error', '¡No puedes ser tu propio amigo, patata solitaria!');
+        if ($userId === $amigoId) {
+            return back()->with('error', 'No puedes enviarte una solicitud a ti mismo.');
         }
 
-        // 🔍 CORRECCIÓN: Antes buscabas por 'user_id', pero tu tabla usa 'usuario_id'
-        $existe = \App\Models\Amigo::where(function ($q) use ($userId, $amigoId) {
+        $existe = Amigo::where(function ($q) use ($userId, $amigoId) {
             $q->where('usuario_id', $userId)->where('amigo_id', $amigoId);
         })->orWhere(function ($q) use ($userId, $amigoId) {
             $q->where('usuario_id', $amigoId)->where('amigo_id', $userId);
-        })->first();
+        })->exists();
 
-        if (!$existe) {
-            \App\Models\Amigo::create([
-                'usuario_id' => $userId,
-                'amigo_id' => $amigoId,
-                'estado' => 'pendiente',
-            ]);
-            return back()->with('success', '¡Solicitud enviada! 🥔');
+        if ($existe) {
+            return back()->with('error', 'Ya existe una relacion con este usuario.');
         }
 
-        return back()->with('error', 'Ya existe una relación con esta patata.');
+        Amigo::create([
+            'usuario_id' => $userId,
+            'amigo_id'   => $amigoId,
+            'estado'     => EstadoAmistad::Pendiente->value,
+        ]);
+
+        return back()->with('success', 'Solicitud enviada.');
     }
 
-    // ... (Aceptar, Rechazar y Eliminar se mantienen igual, están bien enfocados)
-
+    /**
+     * Acepto la solicitud de amistad enviada por el usuario con el id indicado.
+     * Solo puedo aceptar solicitudes que me hayan enviado a mi, no las que yo envie.
+     */
     public function aceptarSolicitud($id)
     {
-        $userId = auth()->id();
-        $solicitud = \App\Models\Amigo::where('usuario_id', $id)
+        $userId    = auth()->id();
+        $solicitud = Amigo::where('usuario_id', $id)
             ->where('amigo_id', $userId)
-            ->where('estado', 'pendiente')
+            ->where('estado', EstadoAmistad::Pendiente->value)
             ->first();
 
-        if ($solicitud) {
-            $solicitud->update(['estado' => 'aceptada']);
-            return redirect()->route('amigos.index', ['tab' => 'mis-amigos'])
-                ->with('success', '¡Nueva patata amiga añadida!');
+        if (!$solicitud) {
+            return back()->with('error', 'No se encontro la solicitud.');
         }
-        return back()->with('error', 'No se pudo encontrar la solicitud.');
+
+        $solicitud->update(['estado' => EstadoAmistad::Aceptada->value]);
+
+        return redirect()->route('amigos.index', ['tab' => 'mis-amigos'])
+            ->with('success', 'Nueva amistad aceptada.');
     }
 
+    /**
+     * Rechazo la solicitud de amistad. Elimino el registro para no dejar rastro.
+     * Solo puedo rechazar solicitudes que me hayan enviado a mi.
+     */
     public function rechazarSolicitud($id)
     {
-        $userId = auth()->id();
-
-        // Buscamos la solicitud donde TÚ eres el receptor (amigo_id) 
-        // y el otro es el emisor (usuario_id)
-        $solicitud = \App\Models\Amigo::where('usuario_id', $id)
+        $userId    = auth()->id();
+        $solicitud = Amigo::where('usuario_id', $id)
             ->where('amigo_id', $userId)
-            ->where('estado', 'pendiente')
+            ->where('estado', EstadoAmistad::Pendiente->value)
             ->first();
 
-        if ($solicitud) {
-            $solicitud->delete(); // Borramos la fila de la base de datos
-            return back()->with('success', 'Solicitud rechazada. ¡Esa patata no entrará en tu huerto!');
+        if (!$solicitud) {
+            return back()->with('error', 'No se encontro la solicitud.');
         }
 
-        return back()->with('error', 'No se pudo encontrar la solicitud para rechazar.');
+        $solicitud->delete();
+
+        return back()->with('success', 'Solicitud rechazada.');
     }
 
+    /**
+     * Elimino una amistad existente en cualquier direccion.
+     */
     public function eliminarAmigo($id)
     {
-        $userId = auth()->id();
-        $relacion = \App\Models\Amigo::where(function ($q) use ($userId, $id) {
+        $userId  = auth()->id();
+        $relacion = Amigo::where(function ($q) use ($userId, $id) {
             $q->where('usuario_id', $userId)->where('amigo_id', $id);
         })->orWhere(function ($q) use ($userId, $id) {
             $q->where('usuario_id', $id)->where('amigo_id', $userId);
         })->first();
 
-        if ($relacion) {
-            $relacion->delete();
-            return back()->with('success', 'Amistad eliminada con éxito.');
+        if (!$relacion) {
+            return back()->with('error', 'No se encontro la relacion.');
         }
-        return back()->with('error', 'No se pudo encontrar la relación.');
+
+        $relacion->delete();
+
+        return back()->with('success', 'Amistad eliminada.');
     }
 }

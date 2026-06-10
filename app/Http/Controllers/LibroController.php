@@ -2,262 +2,144 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
+use App\Http\Requests\ActualizarEstanteriaRequest;
+use App\Http\Requests\GuardarLibroRequest;
 use App\Models\Libro;
-use Illuminate\Support\Facades\Auth;
+use App\Services\BuscadorLibrosService;
+use App\Services\LibroService;
+use Illuminate\Http\Request;
 
 class LibroController extends Controller
 {
+    /**
+     * Inyecto los servicios para que la logica de negocio no viva en el controlador.
+     * LibroService guarda libros; BuscadorLibrosService busca en las APIs externas.
+     */
+    public function __construct(
+        private LibroService $libroService,
+        private BuscadorLibrosService $buscadorLibros,
+    ) {}
+
+    /**
+     * Muestro el formulario de busqueda de libros.
+     */
     public function inicio()
     {
         return view('libros.index');
     }
 
-
+    /**
+     * Busco libros en APIs externas (Google Books con respaldo en Open Library)
+     * y traduzco sus generos al sistema interno.
+     *
+     * Delego toda la logica de las APIs en BuscadorLibrosService: el controlador
+     * solo coordina. Si ninguna API responde, muestro un aviso al usuario para
+     * que sepa que el problema es externo (antes este fallo era silencioso, Bug #6).
+     */
     public function buscar(Request $request)
     {
         $query = $request->input('query');
-
         if (!$query) {
-            return view('libros.index', ['libros' => []]);
+            return view('libros.resultados', ['libros' => []]);
         }
 
-        // 1. TUS LIBROS FALSOS (o los que vengan de la API)
-        $libros = [
-            [
-                'volumeInfo' => [
-                    'title' => 'El misterio de la patata dorada',
-                    'authors' => ['Pepe Patatón'],
-                    'categories' => ['Aventura'], // Google diría algo como "Action & Adventure"
-                    'imageLinks' => ['thumbnail' => 'https://via.placeholder.com/150/f97316/ffffff?text=Libro+1']
-                ]
-            ],
-            [
-                'volumeInfo' => [
-                    'title' => 'Laravel para mentes inquietas',
-                    'authors' => ['Programadora Estrella'],
-                    'categories' => ['Computers'], // Esto lo traduciremos a Ficción o Tecnología
-                    'imageLinks' => ['thumbnail' => 'https://via.placeholder.com/150/fb923c/ffffff?text=Libro+2']
-                ]
-            ],
-            [
-                'volumeInfo' => [
-                    'title' => 'Harry Potter y la API bloqueada',
-                    'authors' => ['J.K. Rowling'],
-                    'categories' => ['Juvenile Fiction / Fantasy'],
-                    'imageLinks' => ['thumbnail' => 'https://via.placeholder.com/150/fdba74/ffffff?text=Libro+3']
-                ]
-            ]
-        ];
+        $resultado = $this->buscadorLibros->buscar($query);
 
-        // 2. 🎯 PROCESAMOS LOS GÉNEROS ANTES DE ENVIARLOS A LA VISTA
-        foreach ($libros as &$libro) {
-            // Obtenemos el género original (el primero de la lista o 'Varios')
-            $generoOriginal = $libro['volumeInfo']['categories'][0] ?? 'Varios';
-
-            // Creamos una nueva clave 'genero_nuestro' con la traducción
-            $libro['genero_nuestro'] = $this->traducirGenero($generoOriginal);
+        // Si ninguna de las dos APIs estuvo disponible, aviso al usuario.
+        if ($resultado['fuente'] === null) {
+            return view('libros.resultados', ['libros' => []])
+                ->with('warning', 'El servicio de busqueda de libros no esta disponible ahora mismo. Prueba mas tarde.');
         }
 
-        return view('libros.resultados', compact('libros'));
+        return view('libros.resultados', ['libros' => $resultado['libros']]);
     }
 
-
-    public function guardar(Request $request)
+    /**
+     * Guardo un libro en la estanteria del usuario via AJAX.
+     *
+     * Delego la logica de creacion/actualizacion en LibroService para
+     * no mezclar reglas de negocio con codigo HTTP aqui.
+     */
+    public function guardar(GuardarLibroRequest $request)
     {
         try {
-            // 🎯 CAMBIO CLAVE: Combinamos género y título para que el traductor sea infalible
-            $textoParaAnalizar = ($request->genero ?? '') . ' ' . ($request->titulo ?? '');
-            $generoFinal = $this->traducirGenero($textoParaAnalizar);
-
-            $libro = Libro::firstOrCreate(
-                ['title' => $request->titulo, 'author' => $request->autor],
-                [
-                    'cover_url' => $request->portada,
-                    'genre' => $generoFinal, // Se guarda ya traducido (ej: "Fantasía")
-                    'user_id' => auth()->id()
-                ]
-            );
-
-            \DB::table('book_user')->updateOrInsert(
-                ['user_id' => auth()->id(), 'book_id' => $libro->id],
-                [
-                    'estado' => 'por_leer',
-                    'puntuacion' => 1,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]
+            $libro = $this->libroService->guardarEnEstanteria(
+                auth()->id(),
+                $request->validated()
             );
 
             return response()->json([
                 'success' => true,
-                'message' => "¡Patata guardada en $generoFinal! 🥔"
+                'message' => "Libro guardado en {$libro->genre}.",
             ]);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'No se pudo guardar el libro. Intentalo de nuevo.',
+            ], 500);
         }
     }
 
-
+    /**
+     * Muestro la estanteria personal del usuario con paginacion.
+     *
+     * Uso paginacion de 12 libros por pagina para evitar cargar cientos
+     * de registros de golpe (Mejora #22).
+     */
     public function miEstanteria()
     {
-        $usuario = \App\Models\User::find(auth()->id());
-
-        // Obtenemos los libros usando la relación que definimos en User.php
-        $books = $usuario->libros()->withPivot('estado', 'puntuacion')->get();
+        $books = auth()->user()
+            ->libros()
+            ->withPivot('estado', 'puntuacion')
+            ->paginate(12);
 
         return view('libros.estanteria', compact('books'));
     }
 
-
-
-
-
-
-    public function actualizarEstanteria(Request $request, Libro $libro)
-    {
-        // 1. Actualizamos el género en la tabla 'libros'
-        // Usamos fill o update para que el cambio de género sea permanente
-        $libro->update([
-            'genre' => $request->genero
-        ]);
-
-        // 2. Actualizamos la relación pivot (estado y puntuación)
-        $usuario = Auth::user();
-        $usuario->libros()->updateExistingPivot($libro->id, [
-            'estado' => $request->estado,
-            'puntuacion' => $request->puntuacion
-        ]);
-
-        return redirect()->back()->with('success', '¡Libro y género actualizados! 🥔✨');
-    }
-
-
-
+    /**
+     * Filtro los libros de la estanteria por genero y devuelvo HTML parcial via AJAX.
+     * El filtro no usa paginacion porque ya esta acotado por genero.
+     */
     public function filtrar(Request $request)
     {
         $genero = $request->get('genero');
-        $user = auth()->user();
-
-        // Usamos el query builder para que la base de datos trabaje por nosotros
-        $query = $user->books();
+        $user   = auth()->user();
+        $query  = $user->libros();
 
         if ($genero !== 'todos' && !empty($genero)) {
             $query->where('genre', $genero);
         }
 
-        $books = $query->get();
-
-        // Renderizamos la vista parcial que ya tienes
-        $html = view('partials.lista_libros_estanteria', compact('books'))->render();
+        $books = $query->withPivot('estado', 'puntuacion')->get();
+        $html  = view('libros.lista-libros-estanteria', compact('books'))->render();
 
         return response()->json(['html' => $html]);
     }
 
+    /**
+     * Actualizo el estado y la puntuacion de un libro en la estanteria del usuario.
+     *
+     * Solo toco la tabla pivote (book_user); el genero del libro compartido no se modifica.
+     * Valido el rango de puntuacion (1-5) en el Form Request para cerrar el Bug #5.
+     */
+    public function actualizarEstanteria(ActualizarEstanteriaRequest $request, Libro $libro)
+    {
+        auth()->user()->libros()->updateExistingPivot($libro->id, [
+            'estado'     => $request->validated('estado'),
+            'puntuacion' => $request->validated('puntuacion'),
+        ]);
 
+        return redirect()->back()->with('success', 'Libro actualizado.');
+    }
 
-    // resources/app/Http/Controllers/LibroController.php
-
+    /**
+     * Elimino un libro de la estanteria del usuario (no borro el libro de la BD).
+     * Solo corto la relacion en la tabla pivote con detach().
+     */
     public function eliminar(Libro $libro)
     {
-        $usuario = auth()->user();
+        auth()->user()->libros()->detach($libro->id);
 
-        // 1. Rompemos la relación en la tabla intermedia (book_user)
-        // Esto NO borra el libro de la tabla 'libros', solo lo quita de TU lista.
-        $usuario->libros()->detach($libro->id);
-
-        return redirect()->back()->with('success', '¡Libro quitado de tu estantería! 🥔');
-    }
-
-
-
-
-    public function obtenerEstadisticasValoracion()
-    {
-        $user = auth()->user();
-
-        $generosValorados = $user->books()
-            ->select(
-                'genre',
-                \DB::raw('count(*) as total_libros'),
-                \DB::raw('AVG(rating) as media_puntuacion') // Suponiendo que tu columna se llama 'rating'
-            )
-            ->groupBy('genre')
-            ->orderBy('media_puntuacion', 'desc')
-            ->get();
-
-        return $generosValorados;
-    }
-
-
-
-
-
-
-
-
-
-
-
-    // --- FUNCIÓN PRIVADA DE TRADUCCIÓN ---
-    private function traducirGenero($textoAnalizar)
-    {
-        $original = strtolower(trim($textoAnalizar ?? 'Varios'));
-
-        $mapaGeneros = [
-            // 1. PRIORIDAD MÁXIMA: Romántica
-            'Romántica'       => ['amor', 'love', 'roman', 'relat', 'amo', 'noviazgo', 'beso'],
-
-            // 2. Fantasía (Reforzada para Mistborn y similares)
-            'Fantasía'        => [
-                'fantas',
-                'magia',
-                'wizard',
-                'witch',
-                'potter',
-                'myth',
-                'dragones',
-                'mistborn',
-                'bruma',
-                'épica',
-                'epic',
-                'sword',
-                'espada',
-                'sorcer'
-            ],
-
-            // 3. Policiaca y Terror
-            'Policiaca'       => ['crimen', 'polic', 'detect', 'mister', 'noir', 'thrill', 'investig'],
-            'Terror'          => ['horror', 'terror', 'miedo', 'ghos', 'suspens', 'paranormal'],
-
-            // 4. Ciencia Ficción (Más patrones comunes)
-            'Ciencia Ficción' => [
-                'science fiction',
-                'space',
-                'robot',
-                'dystop',
-                'sci-fi',
-                'futurist',
-                'cyber',
-                'estelar',
-                'galact'
-            ],
-
-            'Aventura'        => ['aventur', 'adventur', 'action', 'explor'],
-            'Historia'        => ['histor', 'biogra', 'war', 'guerra'],
-            'Clásicos'        => ['classic', 'antiqu', 'ancient'],
-        ];
-
-        foreach ($mapaGeneros as $categoriaOficial => $patrones) {
-            foreach ($patrones as $patron) {
-                if (str_contains($original, $patron)) {
-                    return $categoriaOficial;
-                }
-            }
-        }
-
-        // Tu cambio a Narrativa (¡queda genial!)
-        return 'Narrativa';
+        return redirect()->back()->with('success', 'Libro quitado de tu estanteria.');
     }
 }

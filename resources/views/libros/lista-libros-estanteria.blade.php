@@ -1,4 +1,4 @@
-{{-- resources/views/partials/lista_libros_estanteria.blade.php --}}
+{{-- resources/views/libros/lista-libros-estanteria.blade.php --}}
 @forelse($books as $book)
 <div class="tarjeta-libro-estanteria">
     <div class="contenedor-portada-estanteria">
@@ -10,6 +10,25 @@
         <p class="autor-estanteria">{{ $book->author }}</p>
 
         <div class="separador-tarjeta"></div>
+
+        <div class="fila-control">
+            <span style="font-weight: 700; color: #8b5e3c;">Género</span>
+            <strong class="etiqueta-lectura">
+                @switch($book->genre)
+                    @case('Romántica') 💖 Romántica @break
+                    @case('Romance') 💖 Romántica @break
+                    @case('Fantasía') 🧚‍♀️ Fantasía @break
+                    @case('Policiaca') 🔍 Policiaca @break
+                    @case('Terror') 👻 Terror @break
+                    @case('Ciencia Ficción') 🚀 Ciencia Ficción @break
+                    @case('Aventura') 🗺️ Aventura @break
+                    @case('Historia') 📜 Historia @break
+                    @case('Clásicos') 🏛️ Clásicos @break
+                    @case('Narrativa') 📖 Narrativa @break
+                    @default 📚 {{ $book->genre ?? 'Narrativa' }}
+                @endswitch
+            </strong>
+        </div>
 
         <form action="{{ route('libros.actualizar', $book->id) }}" method="POST">
             @csrf

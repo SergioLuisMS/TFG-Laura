@@ -2,129 +2,112 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\GuardarSesionRequest;
+use App\Services\SalaService;
 use Illuminate\Http\Request;
-use App\Models\SesionEstudio;
 use Illuminate\Support\Facades\Auth;
 
 class SalaController extends Controller
 {
-    // Ver el menú de selección de salas (el mapa)
+    /**
+     * Inyecto SalaService para que la logica de sesiones viva ahi,
+     * no en el controlador.
+     */
+    public function __construct(private SalaService $salaService) {}
+
+    /**
+     * Muestro el mapa de seleccion de salas.
+     */
     public function index()
     {
         return view('salas.index');
     }
 
-    // Entrar en una sala específica usando la plantilla única
+    /**
+     * Muestro una sala especifica con su configuracion visual.
+     * Devuelvo 404 si la sala no existe en el mapa de configuracion.
+     */
     public function show($tipo)
     {
-        // 🎯 CONFIGURACIÓN MAESTRA DE SALAS
-        // Aquí definimos qué cambia en cada una
         $configuracionSalas = [
             'botica' => [
-                'titulo' => 'Botica 🧙🏼‍♂️',
-                'subtitulo' => 'Silencio... las patatas están destilando sabiduría.',
-                'clase' => 'sala-botica',
-                'color_borde' => '#34d399', // Verde esmeralda
+                'titulo'       => 'Botica',
+                'subtitulo'    => 'Silencio... las patatas estan destilando sabiduria.',
+                'clase'        => 'sala-botica',
+                'color_borde'  => '#34d399',
             ],
             'biblioteca' => [
-                'titulo' => 'Biblioteca Antigua 📚',
-                'subtitulo' => 'Shhh... las patatas están sumergidas en letras.',
-                'clase' => 'sala-biblioteca',
-                'color_borde' => '#b87333', // Bronce
+                'titulo'       => 'Biblioteca Antigua',
+                'subtitulo'    => 'Shhh... las patatas estan sumergidas en letras.',
+                'clase'        => 'sala-biblioteca',
+                'color_borde'  => '#b87333',
             ],
             'despacho-rosa' => [
-                'titulo' => 'Despacho Rosa 🌸',
-                'subtitulo' => 'Productividad patatil en tonos pastel.',
-                'clase' => 'sala-despacho-rosa',
-                'color_borde' => '#fce7f3', // Rosa claro
+                'titulo'       => 'Despacho Rosa',
+                'subtitulo'    => 'Productividad patatil en tonos pastel.',
+                'clase'        => 'sala-despacho-rosa',
+                'color_borde'  => '#fce7f3',
             ],
             'dormitorio' => [
-                'titulo' => 'Dormitorio Relax 🛏️',
-                'subtitulo' => 'Un rincón tranquilo para estudiar sin prisas.',
-                'clase' => 'sala-dormitorio',
-                'color_borde' => '#93c5fd', // Azul suave
+                'titulo'       => 'Dormitorio Relax',
+                'subtitulo'    => 'Un rincon tranquilo para estudiar sin prisas.',
+                'clase'        => 'sala-dormitorio',
+                'color_borde'  => '#93c5fd',
             ],
             'despacho-neutro' => [
-                'titulo' => 'Despacho Minimalista 🖥️',
-                'subtitulo' => 'Cero distracciones, máxima concentración.',
-                'clase' => 'sala-despacho-neutro',
-                'color_borde' => '#d1d5db', // Gris neutro
+                'titulo'       => 'Despacho Minimalista',
+                'subtitulo'    => 'Cero distracciones, maxima concentracion.',
+                'clase'        => 'sala-despacho-neutro',
+                'color_borde'  => '#d1d5db',
             ],
             'jardin' => [
-                'titulo' => 'Jardín Zen 🌿',
-                'subtitulo' => 'Respira hondo... la naturaleza ayuda a concentrarse.',
-                'clase' => 'sala-jardin',
-                'color_borde' => '#84cc16', // Un verde lima natural
+                'titulo'       => 'Jardin Zen',
+                'subtitulo'    => 'Respira hondo... la naturaleza ayuda a concentrarse.',
+                'clase'        => 'sala-jardin',
+                'color_borde'  => '#84cc16',
             ],
-
         ];
 
-        // Verificamos que la sala exista en nuestro array
         if (!array_key_exists($tipo, $configuracionSalas)) {
             abort(404);
         }
 
         $sala = $configuracionSalas[$tipo];
 
-        // Retornamos la vista única 'salas.sala' pasándole los datos
         return view('salas.sala', compact('tipo', 'sala'));
     }
 
-    // Guardar sesión (Botón Terminar Sesión)
-    public function guardar(Request $request)
+    /**
+     * Guardo la sesion de estudio al pulsar el boton "Terminar".
+     *
+     * Delego en SalaService que aplica el limite de 86400 segundos (Bug #2 y Seguridad #25).
+     * El tiempo del cliente es la fuente de verdad y sobreescribe los pulsos acumulados.
+     */
+    public function guardar(GuardarSesionRequest $request)
     {
-        $request->validate([
-            'segundos' => 'required|integer',
-            'sala'     => 'required|string'
-        ]);
+        $this->salaService->guardarSesion(
+            Auth::id(),
+            $request->validated('sala'),
+            $request->validated('segundos')
+        );
 
-        $salaLimpia = strtolower(trim($request->sala));
-        $userId = Auth::id();
-        $hoy = now()->toDateString();
-
-        // Buscamos si ya empezó una sesión hoy en esta sala
-        $registro = SesionEstudio::where('user_id', $userId)
-            ->where('sala', $salaLimpia)
-            ->whereDate('fecha_inicio', $hoy)
-            ->first();
-
-        if ($registro) {
-            $registro->increment('segundos', $request->segundos);
-        } else {
-            SesionEstudio::create([
-                'user_id'      => $userId,
-                'sala'         => $salaLimpia,
-                'fecha_inicio' => now(),
-                'segundos'     => $request->segundos,
-            ]);
-        }
-
-        return redirect()->route('salas.index')->with('success', '¡Sesión guardada y tiempo acumulado!');
+        return redirect()->route('salas.index')->with('success', 'Sesion guardada.');
     }
 
-    // Registrar pulso (Cada 30 segundos vía AJAX)
+    /**
+     * Registro un pulso de actividad automatico (llega cada 60s desde el cliente).
+     *
+     * Este endpoint es el respaldo para cuando el usuario cierra la pagina sin "Terminar".
+     * Valido que la sala sea valida usando la misma lista de GuardarSesionRequest.
+     */
     public function registrarPulso(Request $request)
     {
-        $hoy = now()->toDateString();
-        $userId = Auth::id();
-        $sala = $request->input('sala');
+        $request->validate([
+            'sala' => ['required', 'string', 'in:' . implode(',', GuardarSesionRequest::SALAS_VALIDAS)],
+        ]);
 
-        $registro = SesionEstudio::where('user_id', $userId)
-            ->where('sala', $sala)
-            ->whereDate('fecha_inicio', $hoy)
-            ->first();
+        $this->salaService->registrarPulso(Auth::id(), $request->input('sala'));
 
-        if ($registro) {
-            $registro->increment('segundos', 30);
-        } else {
-            SesionEstudio::create([
-                'user_id'      => $userId,
-                'sala'         => $sala,
-                'fecha_inicio' => now(),
-                'segundos'     => 30
-            ]);
-        }
-
-        return response()->json(['status' => 'ok'], 200);
+        return response()->json(['status' => 'ok']);
     }
 }

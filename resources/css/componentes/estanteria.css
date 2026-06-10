@@ -151,3 +151,36 @@
     letter-spacing: 2px;
     /* Separa un poco las patatas entre sí */
 }
+
+/* Barra de filtros por género encima de la rejilla */
+.barra-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 24px;
+    padding: 0 20px;
+}
+
+.btn-filtro {
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1px solid #d7ccc8;
+    background: #fdfaf0;
+    color: #5d4037;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-filtro:hover {
+    background: #fed7aa;
+    border-color: #fb923c;
+}
+
+.btn-filtro.active {
+    background: #fb923c;
+    color: white;
+    border-color: #ea580c;
+}

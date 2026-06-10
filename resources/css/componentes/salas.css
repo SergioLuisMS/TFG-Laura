@@ -444,3 +444,75 @@
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
     filter: brightness(1.2);
 }
+/* ===================================
+   ✨ WIDGET CONCENTRACIÓN
+=================================== */
+
+.widget-concentracion{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:12px;
+}
+
+.focus-container{
+    width:220px;
+    height:14px;
+
+    background:rgba(255,255,255,.15);
+
+    border-radius:20px;
+
+    overflow:hidden;
+
+    border:1px solid rgba(255,255,255,.2);
+}
+
+#focus-bar{
+    width:0%;
+    height:100%;
+
+    border-radius:20px;
+
+    transition:width 1s linear;
+
+    background:linear-gradient(
+        90deg,
+        #65d6ce,
+        #ffd166
+    );
+}
+
+.focus-texto{
+    color:white;
+    font-size:.8rem;
+    letter-spacing:2px;
+    text-transform:uppercase;
+}
+.reloj-brillo{
+    position:absolute;
+    inset:-8px;
+
+    border-radius:50%;
+
+    pointer-events:none;
+
+    animation:latidoMagico 3s infinite;
+}
+
+@keyframes latidoMagico{
+
+    0%{
+        box-shadow:0 0 0px rgba(255,255,255,0);
+    }
+
+    50%{
+        box-shadow:
+            0 0 25px rgba(255,255,255,.25),
+            0 0 45px rgba(255,215,120,.25);
+    }
+
+    100%{
+        box-shadow:0 0 0px rgba(255,255,255,0);
+    }
+}

@@ -11,7 +11,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Confio en el proxy de Railway (y cualquier plataforma similar) para que Laravel
+        // detecte correctamente HTTPS desde la cabecera X-Forwarded-Proto. Sin esto, las URLs
+        // y los assets se generarian en http detras del proxy y el navegador los bloquearia.
+        // En local no hay proxy, asi que estas cabeceras no llegan y esto no afecta a nada.
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
