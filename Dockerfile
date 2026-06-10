@@ -41,7 +41,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && docker-php-ext-install pdo_mysql mbstring bcmath zip \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN a2dismod mpm_event && a2enmod mpm_prefork
+
 
 # Composer (lo copio de su imagen oficial).
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -81,4 +81,12 @@ COPY docker/railway/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh /etc/apache2/sites-available/000-default.conf \
     && chmod +x /usr/local/bin/entrypoint.sh
 
+
+RUN a2dismod mpm_event || true \
+    && a2enmod mpm_prefork || true \
+    && rm -f /etc/apache2/mods-enabled/mpm_event.conf \
+    && rm -f /etc/apache2/mods-enabled/mpm_event.load
+
 ENTRYPOINT ["entrypoint.sh"]
+
+
