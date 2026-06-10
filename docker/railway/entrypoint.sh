@@ -2,6 +2,10 @@
 # Entrypoint para Railway: ajusta el puerto, migra la base de datos y arranca Apache.
 set -e
 
+# Fix Apache MPM: desactivar mpm_event y activar mpm_prefork
+rm -f /etc/apache2/mods-enabled/mpm_event.conf /etc/apache2/mods-enabled/mpm_event.load
+ln -sf /etc/apache2/mods-available/mpm_prefork.conf /etc/apache2/mods-enabled/mpm_prefork.conf
+ln -sf /etc/apache2/mods-available/mpm_prefork.load /etc/apache2/mods-enabled/mpm_prefork.load
 # Railway inyecta el puerto en $PORT. Si no existe (build/local), uso 8080 por defecto.
 : "${PORT:=8080}"
 
