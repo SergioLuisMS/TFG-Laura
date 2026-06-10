@@ -29,6 +29,8 @@ RUN node node_modules/vite/bin/vite.js build
 # ----------------------------------------------------------------------------
 FROM php:8.4-apache AS app
 
+RUN a2dismod mpm_event && a2enmod mpm_prefork
+
 # Extensiones de PHP necesarias para Laravel + MySQL.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libonig-dev \
