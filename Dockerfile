@@ -27,7 +27,7 @@ RUN node node_modules/vite/bin/vite.js build
 # ----------------------------------------------------------------------------
 # Etapa 2: imagen final con PHP + Apache que sirve Laravel.
 # ----------------------------------------------------------------------------
-FROM php:8.3-apache AS app
+FROM php:8.4-apache AS app
 
 # Extensiones de PHP necesarias para Laravel + MySQL.
 RUN apt-get update && apt-get install -y --no-install-recommends \
